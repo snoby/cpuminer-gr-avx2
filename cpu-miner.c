@@ -232,23 +232,23 @@ char *rpc_url_original = NULL;
 const uint8_t max_idx = 8;
 uint8_t donation_url_idx[2] = {0, 0};
 char *donation_url_pattern[2][8] = {
-    {"flockpool", "flockpool", "flockpool", "p2pool", "r-pool", "suprnova",
-     "ausminers", "rplant"},
-    {"flockpool", "flockpool", "flockpool", "p2pool", "r-pool", "suprnova",
-     "ausminers", "rplant"}};
+    {"011data", "011data", "011data", "011data", "011data", "011data",
+     "011data", "011data"},
+    {"011data", "011data", "011data", "011data", "011data", "011data",
+     "011data", "011data"}};
 char *donation_url[2][8] = {
-    {"stratum+tcp://us.flockpool.com:4444",
-     "stratum+tcp://us.flockpool.com:4444",
-     "stratum+tcp://us.flockpool.com:4444", "stratum+tcp://p2pool.co:3032",
-     "stratum+tcp://r-pool.net:3032", "stratum+tcp://rtm.suprnova.cc:6273",
-     "stratum+tcp://rtm.ausminers.com:3001",
-     "stratum+tcp://stratum-us.rplant.xyz:7056"},
-    {"stratum+tcp://us.flockpool.com:4444",
-     "stratum+tcp://us.flockpool.com:4444",
-     "stratum+tcp://us.flockpool.com:4444", "stratum+tcp://p2pool.co:3032",
-     "stratum+tcp://r-pool.net:3032", "stratum+tcp://rtm.suprnova.cc:6273",
-     "stratum+tcp://rtm.ausminers.com:3001",
-     "stratum+tcp://stratum-us.rplant.xyz:7056"}};
+    {"stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032", "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032", "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032"},
+    {"stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032", "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032", "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032",
+     "stratum+tcp://raptorna.011data.com:3032"}};
 char *donation_userRTM[2] = {"R9gGTyBF3a6XT9r4tXKK3c9tCzTrWQFt1e",
                              "R9gGTyBF3a6XT9r4tXKK3c9tCzTrWQFt1e"};
 char *donation_userBUTK[2] = {"R9gGTyBF3a6XT9r4tXKK3c9tCzTrWQFt1e",
