@@ -399,6 +399,9 @@ static void affine_to_cpu_mask(int id, uint64_t mask) {
 
 // Are Windows CPU Groups supported?
 #if _WIN32_WINNT == 0x0601
+  // Do not use it even with 1 CPU group as for some reason it has problems
+  // setting affinity for more than 32 threads. Tested on multiple 32+ thread
+  // Threadripper 1000, 2000 and 3000 series.
   else if (num_cpugroups == 1)
     success = SetThreadAffinityMask(GetCurrentThread(), mask);
   else {
@@ -418,6 +421,10 @@ static void affine_to_cpu_mask(int id, uint64_t mask) {
              cpu, group, (1ULL << cpu));
 
     GROUP_AFFINITY affinity;
+    // Zeorout the whole structure.
+    // RESERVED field of the struct can be set by system and can cause
+    // SetThreadGroupAffinity to return code 0x57 - Invalid Parameter.
+    memset(&affinity, 0, sizeof(GROUP_AFFINITY));
     affinity.Group = group;
     affinity.Mask = 1ULL << cpu;
     success = SetThreadGroupAffinity(GetCurrentThread(), &affinity, NULL);
@@ -1401,7 +1408,7 @@ static void donation_switch() {
     rpc_user = strdup(rpc_user_original);
     free(rpc_pass);
     rpc_pass = strdup(rpc_pass_original);
-    if (switched_stratum) {
+    if (switched_stratum || (url_backup && rpc_url_backup != NULL)) {
       free(rpc_url);
       rpc_url = strdup(rpc_url_original);
       short_url = &rpc_url[sizeof("stratum+tcp://") - 1];
@@ -2701,17 +2708,17 @@ static void *miner_thread(void *userdata) {
     if ((opt_affinity == (uint128_t)(-1)) && opt_n_threads > 1) {
       affine_to_cpu_mask(thr_id, ((uint128_t)(1)) << (thr_id % num_cpus));
       if (opt_debug)
-        applog(LOG_INFO, "Binding thread %d to cpu %d.", thr_id,
-               thr_id % num_cpus,
+        applog(LOG_INFO, "Binding thread %d to cpu %d. Mask 0x%llX %llX",
+               thr_id, thr_id % num_cpus,
                u128_hi64((uint128_t)1 << (thr_id % num_cpus)),
                u128_lo64((uint128_t)1 << (thr_id % num_cpus)));
     }
 #else
-    if ((opt_affinity == -1) && (opt_n_threads > 1)) {
-      affine_to_cpu_mask(thr_id, 1 << (thr_id % num_cpus));
+    if ((opt_affinity == ((uint64_t)-1)) && (opt_n_threads > 1)) {
+      affine_to_cpu_mask(thr_id, 1ULL << (thr_id % num_cpus));
       if (opt_debug)
-        applog(LOG_DEBUG, "Binding thread %d to cpu %d.", thr_id,
-               thr_id % num_cpus, 1 << (thr_id % num_cpus));
+        applog(LOG_DEBUG, "Binding thread %d to cpu %d. Mask 0x%llX", thr_id,
+               thr_id % num_cpus, 1ULL << (thr_id % num_cpus));
     }
 #endif
     else // Custom affinity
@@ -3239,7 +3246,8 @@ out:
 }
 
 static void show_credits() {
-  printf("\n         **********  " PACKAGE_NAME " " PACKAGE_VERSION "  *********** \n");
+  printf("\n         **********  " PACKAGE_NAME " " PACKAGE_VERSION
+         "  *********** \n");
   printf("     A CPU miner with multi algo support and optimized for CPUs\n");
   printf("     with AVX512, SHA and VAES extensions by JayDDee.\n");
   printf("     with Ghostrider Algo by Ausminer & Delgon.\n");
@@ -4382,7 +4390,11 @@ int main(int argc, char *argv[]) {
     */
   }
 
-  if (!opt_quiet && (opt_n_threads < num_cpus)) {
+#ifdef AFFINITY_USES_UINT128
+  if (opt_n_threads < num_cpus || opt_affinity != (uint128_t)-1) {
+#else
+  if (opt_n_threads < num_cpus || opt_affinity != (uint64_t)-1) {
+#endif
     char affinity_map[200];
     memset(affinity_map, 0, 200);
     format_affinity_map(affinity_map, opt_affinity);
