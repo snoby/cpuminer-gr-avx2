@@ -3,9 +3,13 @@
 @SetLocal EnableDelayedExpansion
 @cd /d "%~dp0"
 
-set USE_UNKNOWN=sse2
-REM Remove "REM" from the line below to force start user selected binaries.
-REM call :RunUnknown "User Defined"
+REM Add proper binary instruction set in INST_OVERRIDE to force use those binaries.
+REM To check whichi ones are avaliable refer to readme.txt or use program like CPU-Z. 
+REM Binaries: sse2 sse42 aes-sse42 avx avx2 zen zen2 zen3 avx512 avx512-sha avx512-sha-vaes
+set INST_OVERRIDE=
+if NOT "%INST_OVERRIDE%" == "" (
+  call :RunOverride %INST_OVERRIDE% "User Defined"
+)
 
 for /f "tokens=1 delims=" %%a in ('wmic cpu get Manufacturer') do for %%b in (%%a) do set MANUFACTURER=%%a
 for /f "tokens=1 delims=" %%a in ('wmic cpu get Caption') do for %%b in (%%a) do set CPUCAPTION=%%a
@@ -31,10 +35,14 @@ for %%a in (%CPUCAPTION%) do (
   if /I "%%a" == "Family" ( set /a TYPE=1 )
   if /I "%%a" == "Model" ( set /a TYPE=2 )
 )
+set USE_UNKNOWN=sse2
 
 
 REM MANUFACTURER -> Manufacturer of the CPU. GenuineIntel or AuthenticAMD
 REM CPU_FAMILY & CPU_MODEL can be used to determine instruction set.
+echo Detected CPU Family: %CPU_FAMILY%
+echo Detected CPU Model:  %CPU_MODEL%
+
 
 REM Detected Intel
 if /I !MANUFACTURER! == GenuineIntel (
@@ -78,7 +86,9 @@ if /I !MANUFACTURER! == GenuineIntel (
   if !CPU_MODEL! EQU 61 ( call :RunBinary avx2 "Broadwell (C)" )
   REM Haswell (Client) GT3E & ULT & S
   if !CPU_MODEL! EQU 71 ( call :RunBinary avx2 "Haswell (C)" )
+  if !CPU_MODEL! EQU 69 ( call :RunBinary avx2 "Haswell (C)" )
   if !CPU_MODEL! EQU 61 ( call :RunBinary avx2 "Haswell (C)" )
+  if !CPU_MODEL! EQU 60 ( call :RunBinary avx2 "Haswell (C)" )
   REM Ivy Bridge (Client) M, H, Gladden
   if !CPU_MODEL! EQU 58 ( call :RunBinary avx "Ivy Bridge (C)" )
   REM Sandy Bridge (Client) M, H
@@ -184,6 +194,8 @@ if /I !MANUFACTURER! == AuthenticAMD (
 
 REM Unknown CPU? use SSE2 to be safe.
 echo Detected Unknown CPU - %MANUFACTURER%
+echo Detected CPU Caption - %CPUCAPTION%
+echo Detected CPU Description - %CPUDESCRIPTION%
 call :RunUnknown "Unknown"
 
 :Trim
@@ -193,11 +205,18 @@ for /f "tokens=1*" %%a in ("!Params!") do EndLocal & set %1=%%b
 exit /b
 
 :RunUnknown
-echo Using %USE_UNKNOWN% by default. Change line 6 if CPU was not detected properly.
+echo Using %USE_UNKNOWN% by default. Change line 6 and 9 if CPU was not detected properly.
+echo Detected Unknown CPU - %MANUFACTURER%
+echo Detected CPU Caption - %CPUCAPTION%
+echo Detected CPU Description - %CPUDESCRIPTION%
 call :RunBinary %USE_UNKNOWN% %1
+
+:RunOverride
+call :RunBinary %1 %2
 
 :RunBinary
 echo Detected %1 compatible binary with %2 architecture
+echo Change line 6 and 9 if CPU was not detected properly.
 
 binaries\cpuminer-%1.exe --config=config.json
 timeout 5 > NUL
