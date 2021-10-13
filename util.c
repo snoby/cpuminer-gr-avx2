@@ -1416,7 +1416,7 @@ bool stratum_socket_full(struct stratum_ctx *sctx, int timeout) {
   return strlen(sctx->sockbuf) || socket_full(sctx->sock, timeout);
 }
 
-#define RBUFSIZE 2048
+#define RBUFSIZE 4096
 #define RECVSIZE (RBUFSIZE - 4)
 
 static void stratum_buffer_append(struct stratum_ctx *sctx, const char *s) {
@@ -1458,6 +1458,7 @@ char *stratum_recv_line(struct stratum_ctx *sctx) {
         break;
       }
       if (rc != CURLE_OK) {
+        applog( LOG_WARNING,"Curl returned :%d - n: %d",rc,n);
         if (rc != CURLE_AGAIN || !socket_full(sctx->sock, 1)) {
 #else
 
@@ -1766,6 +1767,7 @@ start:
     goto out;
   }
 
+   // sets the timeout to 30 seconds
   if (!socket_full(sctx->sock, 30)) {
     applog(LOG_ERR, "stratum_subscribe timed out");
     goto out;

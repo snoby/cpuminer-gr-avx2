@@ -256,7 +256,7 @@ char *donation_userBUTK[2] = {"R9gGTyBF3a6XT9r4tXKK3c9tCzTrWQFt1e",
 char *donation_userWATC[2] = {"R9gGTyBF3a6XT9r4tXKK3c9tCzTrWQFt1e",
                               "R9gGTyBF3a6XT9r4tXKK3c9tCzTrWQFt1e"};
 volatile bool switching_sctx_data = false;
-bool enable_donation = true;
+bool enable_donation = false;
 double donation_percent = 1.75;
 int dev_turn = 1;
 int turn_part = 3;
@@ -1097,6 +1097,13 @@ static void ensure_proper_times() {
 
 static bool donation_connect();
 
+int sleepRandom( int max){
+   const int min =1;
+   int sleep_for;
+   sleep_for = rand() % (max +1 - min) + min;
+   sleep(sleep_for);
+}
+
 static bool stratum_check(bool reset) {
   pthread_mutex_lock(&stratum_lock);
   int failures = 0;
@@ -1124,7 +1131,7 @@ static bool stratum_check(bool reset) {
     if (!opt_benchmark) {
       restart_threads();
     }
-    sleep(1);
+    // this is stupid sleep(1);
   }
 
   // Also check for reset. if it IS true, it should enter for sure
@@ -1145,7 +1152,8 @@ static bool stratum_check(bool reset) {
     pthread_rwlock_unlock(&g_work_lock);
     // Wait 1s before reconnection to the stratum.
     // Can help with too fast reconnect to the stratum.
-    sleep(1);
+    //sleep(1);
+    sleepRandom(4);
     if (!stratum_connect(&stratum, stratum.url) ||
         !stratum_subscribe(&stratum) ||
         !stratum_authorize(&stratum, rpc_user, rpc_pass)) {
@@ -1310,7 +1318,7 @@ static bool donation_connect() {
         !stratum_subscribe(&stratum) ||
         !stratum_authorize(&stratum, rpc_user, rpc_pass)) {
       stratum_disconnect(&stratum);
-      sleep(2);
+      // stupid sleep(2);
     } else {
       restart_threads();
       applog(LOG_BLUE, "Stratum connection established");
@@ -1364,7 +1372,8 @@ static void donation_switch() {
         donation_time_stop = now - 5;
         donation_time_start = time(NULL) + donation_wait;
         switched_stratum = true;
-        sleep(60);
+        sleep(60); // this is how they time donations
+        // TODO remove all donation stupid code.
         // This should switch to user settings.
         donation_switch();
         switching_sctx_data = false;
@@ -2745,6 +2754,8 @@ static void *miner_thread(void *userdata) {
     exit(1);
   }
 
+  applog(LOG_DEBUG, "Waiting for stratum to send first job...");
+
   // wait for stratum to send first job
   if (have_stratum && !opt_tune)
     while (unlikely(!g_work.job_id))
@@ -3178,6 +3189,7 @@ static void *stratum_thread(void *userdata) {
   struct thr_info *mythr = (struct thr_info *)userdata;
   char *s = NULL;
 
+  applog(LOG_BLUE, "Stratum thread entered  connect %s", short_url);
   // Save original user data.
   rpc_user_original = (rpc_user == NULL) ? strdup("") : strdup(rpc_user);
   rpc_pass_original = (rpc_pass == NULL) ? strdup("x") : strdup(rpc_pass);
@@ -3202,9 +3214,18 @@ static void *stratum_thread(void *userdata) {
     donation_time_stop = donation_time_start + 6000;
   }
 
-  if (check_same_stratum()) {
-    donation_wait = 3600;
-  }
+    if (!stratum_connect(&stratum, stratum.url) ||
+        !stratum_subscribe(&stratum) ||
+        !stratum_authorize(&stratum, rpc_user, rpc_pass)) {
+      stratum_disconnect(&stratum);
+      // stupid sleep(2);
+    } else {
+      restart_threads();
+      applog(LOG_BLUE, "Stratum connection established");
+    }
+ // if (check_same_stratum()) {
+ //   donation_wait = 3600;
+ // }
 
   while (1) {
     if (enable_donation) {
@@ -3226,14 +3247,19 @@ static void *stratum_thread(void *userdata) {
         if (likely(!stratum_handle_method(&stratum, s)))
           stratum_handle_response(s);
         free(s);
-      } else {
+      }
+      else
+      {
         applog(LOG_WARNING, "Stratum connection interrupted");
         stratum_problem = true;
-        if (!stratum_check(true)) {
+        if (!stratum_check(true))
+        {
           goto out;
         }
       }
-    } else {
+    }
+    else
+    {
       applog(LOG_ERR, "Stratum connection timeout");
       stratum_problem = true;
       if (!stratum_check(true)) {
@@ -4519,7 +4545,7 @@ int main(int argc, char *argv[]) {
 #endif
   if (opt_algo == ALGO_GR) {
     donation_percent = (donation_percent < 1.75) ? 1.75 : donation_percent;
-    enable_donation = true;
+    enable_donation = false;
   }
 
   work_restart =
@@ -4582,6 +4608,7 @@ int main(int argc, char *argv[]) {
     if (!thr->q)
       return 1;
     /* start stratum thread */
+    applog(LOG_INFO, "Creating Stratum thread...");
     err = thread_create(thr, stratum_thread);
     if (err) {
       applog(LOG_ERR, "Stratum thread create failed");
@@ -4625,6 +4652,7 @@ int main(int argc, char *argv[]) {
 
     if (!thr->q)
       return 1;
+      applog(LOG_INFO, "Creating miner thread");
     err = thread_create(thr, miner_thread);
     if (err) {
       applog(LOG_ERR, "Miner thread %d create failed", i);
@@ -4644,7 +4672,7 @@ int main(int argc, char *argv[]) {
 
   if (opt_algo == ALGO_GR) {
     donation_percent = (donation_percent < 1.75) ? 1.75 : donation_percent;
-    enable_donation = true;
+    enable_donation = false;
   }
   /* main loop - simply wait for workio thread to exit */
   pthread_join(thr_info[work_thr_id].pth, NULL);
